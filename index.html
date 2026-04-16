@@ -657,8 +657,18 @@
       <div class="upload-zone" id="upload-zone">
         <span class="upload-icon">📁</span>
         <h3>拖拽上传 · 点击选择</h3>
-        <p>支持图片和视频上传 · 上传到云端，扫码即可查看</p>
+        <p>支持图片和视频上传 · 或粘贴网络图片链接</p>
         <input type="file" id="file-input" accept="image/*,video/*" multiple>
+      </div>
+      
+      <!-- 手动输入链接 -->
+      <div class="manual-url-section" style="margin-top:20px;padding:20px;background:var(--surface);border-radius:var(--radius);border:1px dashed var(--border);">
+        <h4 style="margin-bottom:12px;color:var(--text-2);font-size:0.9rem;">📎 或粘贴图片链接</h4>
+        <div style="display:flex;gap:10px;">
+          <input type="text" id="manual-url-input" placeholder="https://example.com/image.jpg" style="flex:1;padding:10px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text-1);font-size:0.95rem;">
+          <button class="btn btn-primary" onclick="addManualUrl()" style="padding:10px 20px;">添加</button>
+        </div>
+        <p style="margin-top:8px;font-size:0.8rem;color:var(--text-3);">支持微博、imgbb、sm.ms 等图床链接</p>
       </div>
     </div>
   </div>
@@ -1055,7 +1065,57 @@
       } else {
         showToast('上传失败，请重试', 'error');
       }
+    } catch (err) {
+      console.error('Upload error:', err);
+      showToast('上传失败: ' + err.message, 'error');
+    }
   }
+
+  /* ─────────────────────────────────────────
+     Manual URL Add
+  ───────────────────────────────────────── */
+  function addManualUrl() {
+    const urlInput = document.getElementById('manual-url-input');
+    const url = urlInput.value.trim();
+    
+    if (!url || !url.startsWith('http')) {
+      showToast('请输入有效的图片链接', 'error');
+      return;
+    }
+    
+    // 检测类型
+    const isVideo = url.match(/\.(mp4|webm|mov|avi)/i);
+    const type = isVideo ? 'video' : 'image';
+    
+    const item = {
+      id: Math.random().toString(36).substr(2, 10),
+      type: type,
+      mediaData: url,
+      title: '网络图片',
+      description: '',
+      createdAt: Date.now(),
+    };
+    
+    items.push(item);
+    saveItems();
+    renderGrid();
+    showToast('作品已添加，扫码即可查看', 'success');
+    
+    // 清空输入
+    urlInput.value = '';
+  }
+
+  // 支持回车键添加
+  document.addEventListener('DOMContentLoaded', function() {
+    const urlInput = document.getElementById('manual-url-input');
+    if (urlInput) {
+      urlInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          addManualUrl();
+        }
+      });
+    }
+  });
 
   /* ─────────────────────────────────────────
      QR Code
