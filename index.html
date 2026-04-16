@@ -1002,20 +1002,20 @@
     const desc = document.getElementById('form-desc').value.trim();
     const type = pendingFile.type.startsWith('image/') ? 'image' : 'video';
 
-    // 上传到 0x0.st（支持直接访问）
+    // 上传到 tmpfiles.org（支持直接访问）
     showToast('正在上传到云端...', '');
     
     const formData = new FormData();
     formData.append('file', pendingFile);
 
-    fetch('https://0x0.st', {
+    fetch('https://tmpfiles.org/api/v1/upload', {
       method: 'POST',
       body: formData
     })
-    .then(res => res.text())
-    .then(url => {
-      url = url.trim();
-      if (url.startsWith('http')) {
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success' && data.data && data.data.url) {
+        const url = data.data.url;
         const item = {
           id: typeof nanoid === 'function' ? nanoid(10) : Math.random().toString(36).substr(2, 10),
           type,
