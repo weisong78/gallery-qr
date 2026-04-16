@@ -996,61 +996,88 @@
     pendingDataUrl = null;
   }
 
-  function confirmUpload() {
+  async function confirmUpload() {
     const title = document.getElementById('form-title').value.trim();
     const desc = document.getElementById('form-desc').value.trim();
     const type = pendingFile.type.startsWith('image/') ? 'image' : 'video';
 
-    // 上传到 transfer.sh（支持直接访问）
     showToast('正在上传到云端...', '');
     
-    const filename = pendingFile.name || 'file';
-    fetch(`https://transfer.sh/${filename}`, {
-      method: 'PUT',
-      body: pendingFile,
-      headers: {
-        'Content-Type': 'application/octet-stream'
+    // 尝试多个图床
+    const uploaders = [
+      // 1. 0x0.st
+      async () => {
+        const formData = new FormData();
+        formData.append('file', pendingFile);
+        const res = await fetch('https://0x0.st', { method: 'POST', body: formData });
+        if (!res.ok) throw new Error('0x0.st failed');
+        const url = (await res.text()).trim();
+        return url.startsWith('http') ? url : null;
+      },
+      // 2. file.io
+      async () => {
+        const formData = new FormData();
+        formData.append('file', pendingFile);
+        const res = await fetch('https://file.io/?expires=1w', { method: 'POST', body: formData });
+        if (!res.ok) throw new Error('file.io failed');
+        const data = await res.json();
+        return data.link;
+      },
+      // 3. transfer.sh
+      async () => {
+        const filename = pendingFile.name || 'file';
+        const res = await fetch(`https://transfer.sh/${filename}`, {
+          method: 'PUT',
+          body: pendingFile,
+          headers: { 'Content-Type': 'application/octet-stream' }
+        });
+        if (!res.ok) throw new Error('transfer.sh failed');
+        const url = (await res.text()).trim();
+        return url.startsWith('http') ? url : null;
       }
-    })
-    .then(res => {
-      console.log('Upload response status:', res.status);
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      }
-      return res.text();
-    })
-    .then(url => {
-      url = url.trim();
-      console.log('Upload URL:', url);
-      if (url.startsWith('http')) {
-        const item = {
-          id: typeof nanoid === 'function' ? nanoid(10) : Math.random().toString(36).substr(2, 10),
-          type,
-          mediaData: url,  // 存储云端URL
-          title: title || pendingFile.name.replace(/\.[^.]+$/, ''),
-          description: desc,
-          createdAt: Date.now(),
-        };
+    ];
 
-        items.push(item);
-        saveItems();
-        closeUploadModal();
-        renderGrid();
-        showToast('作品已上传，扫码即可查看', 'success');
-      } else {
-        showToast('上传失败，请重试', 'error');
-      }
-    })
-    .catch(err => {
-      console.error('Upload error:', err);
-      showToast('上传失败: ' + err.message, 'error');
-    });
+    let mediaUrl = null;
+    let lastError = null;
 
-    // Scroll to new card
-    setTimeout(() => {
-      const first = document.querySelector('.media-card');
-      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 300);
+    for (let i = 0; i < uploaders.length; i++) {
+      try {
+        console.log(`Trying uploader ${i + 1}...`);
+        mediaUrl = await uploaders[i]();
+        if (mediaUrl) {
+          console.log('Upload success:', mediaUrl);
+          break;
+        }
+      } catch (err) {
+        console.log(`Uploader ${i + 1} failed:`, err.message);
+        lastError = err;
+      }
+    }
+
+    if (mediaUrl) {
+      const item = {
+        id: Math.random().toString(36).substr(2, 10),
+        type,
+        mediaData: mediaUrl,
+        title: title || pendingFile.name.replace(/\.[^.]+$/, ''),
+        description: desc,
+        createdAt: Date.now(),
+      };
+
+      items.push(item);
+      saveItems();
+      closeUploadModal();
+      renderGrid();
+      showToast('作品已上传，扫码即可查看', 'success');
+      
+      setTimeout(() => {
+        const first = document.querySelector('.media-card');
+        if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    } else {
+      console.error('All uploaders failed:', lastError);
+      showToast('所有图床都上传失败，请检查网络或稍后重试', 'error');
+    }
   }
 
   /* ─────────────────────────────────────────
