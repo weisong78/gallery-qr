@@ -1002,20 +1002,20 @@
     const desc = document.getElementById('form-desc').value.trim();
     const type = pendingFile.type.startsWith('image/') ? 'image' : 'video';
 
-    // 上传到 fileio
+    // 上传到 transfer.sh（支持直接访问）
     showToast('正在上传到云端...', '');
     
-    const formData = new FormData();
-    formData.append('file', pendingFile);
-
-    fetch('https://file.io/?expires=1w', {
-      method: 'POST',
-      body: formData
+    fetch('https://transfer.sh', {
+      method: 'PUT',
+      body: pendingFile,
+      headers: {
+        'Content-Type': 'application/octet-stream'
+      }
     })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success && data.link) {
-        const url = data.link;
+    .then(res => res.text())
+    .then(url => {
+      url = url.trim();
+      if (url.startsWith('http')) {
         const item = {
           id: typeof nanoid === 'function' ? nanoid(10) : Math.random().toString(36).substr(2, 10),
           type,
