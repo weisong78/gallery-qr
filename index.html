@@ -1069,8 +1069,11 @@
       return;
     }
 
-    // 直接使用云端URL生成二维码，扫码即可查看
-    currentQRUrl = item.mediaData;
+    // 使用查看器页面，兼容微信
+    const viewerUrl = new URL('https://weisong78.github.io/gallery-qr/viewer.html');
+    viewerUrl.searchParams.set('url', item.mediaData);
+    viewerUrl.searchParams.set('type', item.type);
+    currentQRUrl = viewerUrl.toString();
     document.getElementById('qr-modal-title').textContent = item.title || '作品二维码';
     document.getElementById('qr-url-text').textContent = currentQRUrl;
 

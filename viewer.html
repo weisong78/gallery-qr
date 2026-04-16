@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>作品预览</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0c0c0e;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    img, video {
+      max-width: 100%;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+    .error {
+      color: #c9a96e;
+      text-align: center;
+      padding: 40px;
+    }
+  </style>
+</head>
+<body>
+  <div id="content"></div>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const url = params.get('url');
+    const type = params.get('type') || 'image';
+    
+    const content = document.getElementById('content');
+    
+    if (!url) {
+      content.innerHTML = '<p class="error">无效的链接</p>';
+    } else {
+      try {
+        const decodedUrl = decodeURIComponent(url);
+        if (type === 'video') {
+          content.innerHTML = `<video controls autoplay><source src="${decodedUrl}" type="video/mp4">您的浏览器不支持视频播放</video>`;
+        } else {
+          content.innerHTML = `<img src="${decodedUrl}" alt="作品">`;
+        }
+      } catch (e) {
+        content.innerHTML = '<p class="error">加载失败</p>';
+      }
+    }
+  </script>
+</body>
+</html>
