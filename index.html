@@ -658,7 +658,7 @@
       <div class="upload-zone" id="upload-zone">
         <span class="upload-icon">📁</span>
         <h3>拖拽上传 · 点击选择</h3>
-        <p>支持 JPG, PNG, GIF, WebP, MP4, WebM, MOV · 图片≤10MB / 视频≤50MB</p>
+        <p>支持图片和视频上传 · 上传到云端，扫码即可查看</p>
         <input type="file" id="file-input" accept="image/*,video/*" multiple>
       </div>
     </div>
@@ -759,7 +759,6 @@
   let items = [];
   let pendingFile = null;
   let pendingDataUrl = null;
-  let pendingThumb = null;
   let deleteTargetId = null;
   let currentViewerId = null;
 
@@ -791,27 +790,19 @@
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     } catch (e) {
-      showToast('存储空间不足，请清理部分作品', 'error');
+      showToast('存储失败', 'error');
     }
     updateStorageBar();
   }
 
   function updateStorageBar() {
+    // 现在只存储URL，不需要显示存储条
     const bar = document.getElementById('storage-bar');
-    const fill = document.getElementById('storage-fill');
-    const text = document.getElementById('storage-text');
-    try {
-      // rough estimate of localStorage usage
-      const raw = localStorage.getItem(STORAGE_KEY) || '';
-      const bytes = new Blob([raw]).size;
-      const mb = (bytes / 1024 / 1024).toFixed(1);
-      const pct = Math.min(100, (bytes / (5 * 1024 * 1024)) * 100); // assume 5MB soft limit
-      if (bytes > 1024) {
-        bar.style.display = 'flex';
-        fill.style.width = pct + '%';
-        text.textContent = mb + ' MB';
-      }
-    } catch {}
+    if (items.length > 0) {
+      bar.style.display = 'flex';
+      document.getElementById('storage-fill').style.width = '5%';
+      document.getElementById('storage-text').textContent = items.length + ' 个作品';
+    }
   }
 
   /* ─────────────────────────────────────────
@@ -877,9 +868,8 @@
       card.className = 'media-card';
       card.style.animationDelay = (idx * 60) + 'ms';
 
-      const thumb = item.type === 'video' && item.thumbnail
+      const thumb = item.type === 'video'
         ? `<div class="media-card-thumb video-thumb">
-             <img src="${item.thumbnail}" class="media-card-thumb" alt="thumb">
              <div class="video-play-icon"></div>
            </div>`
         : `<img src="${item.mediaData}" class="media-card-thumb" alt="thumb">`;
@@ -971,30 +961,11 @@
       pendingFile = file;
       pendingDataUrl = dataUrl;
 
+      // 直接显示预览，不需要生成缩略图
       if (isVideo) {
-        // generate thumbnail
-        const video = document.createElement('video');
-        video.src = dataUrl;
-        video.muted = true;
-        video.crossOrigin = 'anonymous';
-        video.addEventListener('loadeddata', () => {
-          video.currentTime = 0.1;
-        });
-        video.addEventListener('seeked', () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          pendingThumb = canvas.toDataURL('image/jpeg', 0.7);
-          showUploadModal(dataUrl, 'video', pendingThumb);
-        });
-        video.addEventListener('error', () => {
-          showUploadModal(dataUrl, 'video', null);
-        });
-        video.load();
+        showUploadModal(dataUrl, 'video');
       } else {
-        showUploadModal(dataUrl, 'image', null);
+        showUploadModal(dataUrl, 'image');
       }
     };
     reader.readAsDataURL(file);
@@ -1024,34 +995,49 @@
     document.getElementById('upload-modal').classList.remove('open');
     pendingFile = null;
     pendingDataUrl = null;
-    pendingThumb = null;
   }
 
   function confirmUpload() {
-    try {
-      const title = document.getElementById('form-title').value.trim();
-      const desc = document.getElementById('form-desc').value.trim();
-      const type = pendingFile.type.startsWith('image/') ? 'image' : 'video';
+    const title = document.getElementById('form-title').value.trim();
+    const desc = document.getElementById('form-desc').value.trim();
+    const type = pendingFile.type.startsWith('image/') ? 'image' : 'video';
 
-      const item = {
-        id: typeof nanoid === 'function' ? nanoid(10) : Math.random().toString(36).substr(2, 10),
-        type,
-        mediaData: pendingDataUrl,
-        title: title || pendingFile.name.replace(/\.[^.]+$/, ''),
-        description: desc,
-        createdAt: Date.now(),
-        thumbnail: pendingThumb || null,
-      };
+    // 上传到云端 (0x0.st - 永久文件托管)
+    showToast('正在上传到云端...', '');
+    
+    const formData = new FormData();
+    formData.append('file', pendingFile);
 
-      items.push(item);
-      saveItems();
-      closeUploadModal();
-      renderGrid();
-      showToast('作品已保存', 'success');
-    } catch (e) {
-      console.error('Save error:', e);
-      alert('保存失败: ' + e.message);
-    }
+    fetch('https://0x0.st', {
+      method: 'POST',
+      body: formData
+    })
+    .then(res => res.text())
+    .then(url => {
+      url = url.trim();
+      if (url.startsWith('http')) {
+        const item = {
+          id: typeof nanoid === 'function' ? nanoid(10) : Math.random().toString(36).substr(2, 10),
+          type,
+          mediaData: url,  // 存储云端URL
+          title: title || pendingFile.name.replace(/\.[^.]+$/, ''),
+          description: desc,
+          createdAt: Date.now(),
+        };
+
+        items.push(item);
+        saveItems();
+        closeUploadModal();
+        renderGrid();
+        showToast('作品已上传，扫码即可查看', 'success');
+      } else {
+        showToast('上传失败，请重试', 'error');
+      }
+    })
+    .catch(err => {
+      console.error('Upload error:', err);
+      showToast('上传失败: ' + err.message, 'error');
+    });
 
     // Scroll to new card
     setTimeout(() => {
@@ -1083,7 +1069,8 @@
       return;
     }
 
-    currentQRUrl = getViewerUrl(item.id);
+    // 直接使用云端URL生成二维码，扫码即可查看
+    currentQRUrl = item.mediaData;
     document.getElementById('qr-modal-title').textContent = item.title || '作品二维码';
     document.getElementById('qr-url-text').textContent = currentQRUrl;
 
@@ -1111,7 +1098,11 @@
   }
 
   function getViewerUrl(id) {
-    const base = window.location.origin + window.location.pathname;
+    // 确保生成完整网址，包含协议和域名
+    let base = window.location.origin + window.location.pathname;
+    // 移除末尾斜杠
+    base = base.replace(/\/$/, '');
+    // 确保返回完整URL（https://用户名.github.io/仓库名/?view=xxx）
     return `${base}?view=${id}`;
   }
 
