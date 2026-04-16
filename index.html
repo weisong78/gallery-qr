@@ -1002,20 +1002,22 @@
     const desc = document.getElementById('form-desc').value.trim();
     const type = pendingFile.type.startsWith('image/') ? 'image' : 'video';
 
-    // 上传到 file.io 图床
+    // 上传到 litterbox 临时托管（适合测试）
     showToast('正在上传到云端...', '');
     
     const formData = new FormData();
-    formData.append('file', pendingFile);
+    formData.append('reqtype', 'fileupload');
+    formData.append('fileToUpload', pendingFile);
+    formData.append('time', '72h'); // 临时保存72小时
 
-    fetch('https://file.io', {
+    fetch('https://litterbox.catbox.moe/resources/internals/api.php', {
       method: 'POST',
       body: formData
     })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success && data.link) {
-        const url = data.link;
+    .then(res => res.text())
+    .then(url => {
+      url = url.trim();
+      if (url.startsWith('http')) {
         const item = {
           id: typeof nanoid === 'function' ? nanoid(10) : Math.random().toString(36).substr(2, 10),
           type,
