@@ -1005,7 +1005,19 @@
     
     // 尝试多个图床
     const uploaders = [
-      // 1. 0x0.st
+      // 1. PostImages (无需 API key)
+      async () => {
+        const formData = new FormData();
+        formData.append('file', pendingFile);
+        const res = await fetch('https://postimages.org/json/rr', { 
+          method: 'POST', 
+          body: formData 
+        });
+        if (!res.ok) throw new Error('postimages failed');
+        const data = await res.json();
+        return data.url;
+      },
+      // 2. 0x0.st
       async () => {
         const formData = new FormData();
         formData.append('file', pendingFile);
@@ -1014,7 +1026,7 @@
         const url = (await res.text()).trim();
         return url.startsWith('http') ? url : null;
       },
-      // 2. file.io
+      // 3. file.io
       async () => {
         const formData = new FormData();
         formData.append('file', pendingFile);
@@ -1022,18 +1034,6 @@
         if (!res.ok) throw new Error('file.io failed');
         const data = await res.json();
         return data.link;
-      },
-      // 3. transfer.sh
-      async () => {
-        const filename = pendingFile.name || 'file';
-        const res = await fetch(`https://transfer.sh/${filename}`, {
-          method: 'PUT',
-          body: pendingFile,
-          headers: { 'Content-Type': 'application/octet-stream' }
-        });
-        if (!res.ok) throw new Error('transfer.sh failed');
-        const url = (await res.text()).trim();
-        return url.startsWith('http') ? url : null;
       }
     ];
 
