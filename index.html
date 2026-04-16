@@ -8,7 +8,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/nanoid@3.3.7/index.browser.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1013,9 +1012,16 @@
         'Content-Type': 'application/octet-stream'
       }
     })
-    .then(res => res.text())
+    .then(res => {
+      console.log('Upload response status:', res.status);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      }
+      return res.text();
+    })
     .then(url => {
       url = url.trim();
+      console.log('Upload URL:', url);
       if (url.startsWith('http')) {
         const item = {
           id: typeof nanoid === 'function' ? nanoid(10) : Math.random().toString(36).substr(2, 10),
