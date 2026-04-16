@@ -1002,21 +1002,20 @@
     const desc = document.getElementById('form-desc').value.trim();
     const type = pendingFile.type.startsWith('image/') ? 'image' : 'video';
 
-    // 上传到 Catbox 图片托管
+    // 上传到 imgbb 图床（支持国内访问）
     showToast('正在上传到云端...', '');
     
     const formData = new FormData();
-    formData.append('reqtype', 'fileupload');
-    formData.append('fileToUpload', pendingFile);
+    formData.append('image', pendingFile);
 
-    fetch('https://catbox.moe/user/api.php', {
+    fetch('https://api.imgbb.com/1/upload?key=d36eb6591370ae7f9089d85875571358', {
       method: 'POST',
       body: formData
     })
-    .then(res => res.text())
-    .then(url => {
-      url = url.trim();
-      if (url.startsWith('http')) {
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        const url = data.data.url;
         const item = {
           id: typeof nanoid === 'function' ? nanoid(10) : Math.random().toString(36).substr(2, 10),
           type,
