@@ -1002,20 +1002,20 @@
     const desc = document.getElementById('form-desc').value.trim();
     const type = pendingFile.type.startsWith('image/') ? 'image' : 'video';
 
-    // 上传到 imgbb 图床（支持国内访问）
+    // 上传到 file.io 图床
     showToast('正在上传到云端...', '');
     
     const formData = new FormData();
-    formData.append('image', pendingFile);
+    formData.append('file', pendingFile);
 
-    fetch('https://api.imgbb.com/1/upload?key=d36eb6591370ae7f9089d85875571358', {
+    fetch('https://file.io', {
       method: 'POST',
       body: formData
     })
     .then(res => res.json())
     .then(data => {
-      if (data.success) {
-        const url = data.data.url;
+      if (data.success && data.link) {
+        const url = data.link;
         const item = {
           id: typeof nanoid === 'function' ? nanoid(10) : Math.random().toString(36).substr(2, 10),
           type,
