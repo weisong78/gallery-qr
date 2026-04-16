@@ -1008,11 +1008,13 @@
     formData.append('file', pendingFile);
 
     try {
-      const res = await fetch('https://file.io/?expires=1w', { method: 'POST', body: formData });
-      const data = await res.json();
+      console.log('Uploading to 0x0.st...');
+      const res = await fetch('https://0x0.st', { method: 'POST', body: formData });
+      console.log('Response status:', res.status);
+      const mediaUrl = (await res.text()).trim();
+      console.log('Upload success, URL:', mediaUrl);
       
-      if (data.success && data.link) {
-        const mediaUrl = data.link;
+      if (mediaUrl.startsWith('http')) {
       const item = {
         id: Math.random().toString(36).substr(2, 10),
         type,
