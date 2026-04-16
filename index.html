@@ -1003,58 +1003,16 @@
 
     showToast('正在上传到云端...', '');
     
-    // 尝试多个图床
-    const uploaders = [
-      // 1. PostImages (无需 API key)
-      async () => {
-        const formData = new FormData();
-        formData.append('file', pendingFile);
-        const res = await fetch('https://postimages.org/json/rr', { 
-          method: 'POST', 
-          body: formData 
-        });
-        if (!res.ok) throw new Error('postimages failed');
-        const data = await res.json();
-        return data.url;
-      },
-      // 2. 0x0.st
-      async () => {
-        const formData = new FormData();
-        formData.append('file', pendingFile);
-        const res = await fetch('https://0x0.st', { method: 'POST', body: formData });
-        if (!res.ok) throw new Error('0x0.st failed');
-        const url = (await res.text()).trim();
-        return url.startsWith('http') ? url : null;
-      },
-      // 3. file.io
-      async () => {
-        const formData = new FormData();
-        formData.append('file', pendingFile);
-        const res = await fetch('https://file.io/?expires=1w', { method: 'POST', body: formData });
-        if (!res.ok) throw new Error('file.io failed');
-        const data = await res.json();
-        return data.link;
-      }
-    ];
+    // 使用 file.io 上传（之前测试成功）
+    const formData = new FormData();
+    formData.append('file', pendingFile);
 
-    let mediaUrl = null;
-    let lastError = null;
-
-    for (let i = 0; i < uploaders.length; i++) {
-      try {
-        console.log(`Trying uploader ${i + 1}...`);
-        mediaUrl = await uploaders[i]();
-        if (mediaUrl) {
-          console.log('Upload success:', mediaUrl);
-          break;
-        }
-      } catch (err) {
-        console.log(`Uploader ${i + 1} failed:`, err.message);
-        lastError = err;
-      }
-    }
-
-    if (mediaUrl) {
+    try {
+      const res = await fetch('https://file.io/?expires=1w', { method: 'POST', body: formData });
+      const data = await res.json();
+      
+      if (data.success && data.link) {
+        const mediaUrl = data.link;
       const item = {
         id: Math.random().toString(36).substr(2, 10),
         type,
@@ -1074,9 +1032,12 @@
         const first = document.querySelector('.media-card');
         if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 300);
-    } else {
-      console.error('All uploaders failed:', lastError);
-      showToast('所有图床都上传失败，请检查网络或稍后重试', 'error');
+      } else {
+        showToast('上传失败，请重试', 'error');
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      showToast('上传失败: ' + err.message, 'error');
     }
   }
 
