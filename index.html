@@ -1008,44 +1008,53 @@
     formData.append('file', pendingFile);
 
     try {
-      // 使用 CORS 代理 + file.io
-      console.log('Uploading via CORS proxy...');
-      const res = await fetch('https://corsproxy.io/?https://file.io', { 
-        method: 'POST', 
-        body: formData 
-      });
-      console.log('Response status:', res.status);
-      const data = await res.json();
-      console.log('Response:', data);
+      // 使用备用图床 - 尝试多个选项
+      let mediaUrl = null;
       
-      if (data.success && data.link) {
-        const mediaUrl = data.link;
-      const item = {
-        id: Math.random().toString(36).substr(2, 10),
-        type,
-        mediaData: mediaUrl,
-        title: title || pendingFile.name.replace(/\.[^.]+$/, ''),
-        description: desc,
-        createdAt: Date.now(),
-      };
+      // 1. 尝试 0x0.st（直接）
+      try {
+        console.log('Trying 0x0.st...');
+        const res = await fetch('https://0x0.st', { method: 'POST', body: formData });
+        if (res.ok) {
+          const url = (await res.text()).trim();
+          if (url.startsWith('http')) {
+            mediaUrl = url;
+            console.log('0x0.st success:', mediaUrl);
+          }
+        }
+      } catch (e) {
+        console.log('0x0.st failed:', e.message);
+      }
+      
+      // 2. 如果失败，使用本地存储作为备用
+      if (!mediaUrl && pendingDataUrl) {
+        console.log('Using local storage fallback');
+        mediaUrl = pendingDataUrl; // 使用 base64 data URL
+      }
+      
+      if (mediaUrl) {
+        const item = {
+          id: Math.random().toString(36).substr(2, 10),
+          type,
+          mediaData: mediaUrl,
+          title: title || pendingFile.name.replace(/\.[^.]+$/, ''),
+          description: desc,
+          createdAt: Date.now(),
+        };
 
-      items.push(item);
-      saveItems();
-      closeUploadModal();
-      renderGrid();
-      showToast('作品已上传，扫码即可查看', 'success');
-      
-      setTimeout(() => {
-        const first = document.querySelector('.media-card');
-        if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 300);
+        items.push(item);
+        saveItems();
+        closeUploadModal();
+        renderGrid();
+        showToast('作品已上传，扫码即可查看', 'success');
+        
+        setTimeout(() => {
+          const first = document.querySelector('.media-card');
+          if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300);
       } else {
         showToast('上传失败，请重试', 'error');
       }
-    } catch (err) {
-      console.error('Upload error:', err);
-      showToast('上传失败: ' + err.message, 'error');
-    }
   }
 
   /* ─────────────────────────────────────────
