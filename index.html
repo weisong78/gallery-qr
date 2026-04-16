@@ -1008,13 +1008,18 @@
     formData.append('file', pendingFile);
 
     try {
-      console.log('Uploading to 0x0.st...');
-      const res = await fetch('https://0x0.st', { method: 'POST', body: formData });
+      // 使用 CORS 代理 + file.io
+      console.log('Uploading via CORS proxy...');
+      const res = await fetch('https://corsproxy.io/?https://file.io', { 
+        method: 'POST', 
+        body: formData 
+      });
       console.log('Response status:', res.status);
-      const mediaUrl = (await res.text()).trim();
-      console.log('Upload success, URL:', mediaUrl);
+      const data = await res.json();
+      console.log('Response:', data);
       
-      if (mediaUrl.startsWith('http')) {
+      if (data.success && data.link) {
+        const mediaUrl = data.link;
       const item = {
         id: Math.random().toString(36).substr(2, 10),
         type,
