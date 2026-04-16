@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script src="https://cdn.staticfile.org/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1148,19 +1148,21 @@
     document.getElementById('qr-modal-title').textContent = item.title || '作品二维码';
     document.getElementById('qr-url-text').textContent = currentQRUrl;
 
-    const canvas = document.getElementById('qr-canvas');
-    QRCode.toCanvas(canvas, currentQRUrl, {
+    // 清除旧二维码
+    const qrContainer = document.getElementById('qr-canvas');
+    qrContainer.innerHTML = '';
+
+    // qrcodejs 库 API
+    new QRCode(qrContainer, {
+      text: currentQRUrl,
       width: 220,
-      margin: 2,
-      color: { dark: '#0c0c0e', light: '#f0ede8' },
-    }, function(error) {
-      if (error) {
-        console.error('QR generation error:', error);
-        showToast('二维码生成失败: ' + error.message, 'error');
-        return;
-      }
-      document.getElementById('qr-modal').classList.add('open');
+      height: 220,
+      colorDark: '#0c0c0e',
+      colorLight: '#f0ede8',
+      correctLevel: QRCode.CorrectLevel.M
     });
+
+    document.getElementById('qr-modal').classList.add('open');
   }
 
   function openViewerQR() {
@@ -1181,12 +1183,17 @@
   }
 
   function downloadQR() {
-    const canvas = document.getElementById('qr-canvas');
-    const link = document.createElement('a');
-    link.download = 'qr-code.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    showToast('二维码已下载', 'success');
+    const container = document.getElementById('qr-canvas');
+    const img = container.querySelector('img');
+    if (img) {
+      const link = document.createElement('a');
+      link.download = 'qr-code.png';
+      link.href = img.src;
+      link.click();
+      showToast('二维码已下载', 'success');
+    } else {
+      showToast('二维码未生成', 'error');
+    }
   }
 
   /* ─────────────────────────────────────────
