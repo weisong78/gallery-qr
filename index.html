@@ -1005,7 +1005,8 @@
     // 上传到 transfer.sh（支持直接访问）
     showToast('正在上传到云端...', '');
     
-    fetch('https://transfer.sh', {
+    const filename = pendingFile.name || 'file';
+    fetch(`https://transfer.sh/${filename}`, {
       method: 'PUT',
       body: pendingFile,
       headers: {
